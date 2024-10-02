@@ -1,0 +1,188 @@
+definitions:
+  models.PaginatedLyricsRespons:
+    properties:
+      song_name:
+        description: Название песни
+        type: string
+      total_verses:
+        description: Общее количество куплетов
+        type: integer
+      verse_limit:
+        description: Количество куплетов на странице
+        type: integer
+      verse_page:
+        description: Номер страницы куплетов
+        type: integer
+      verses:
+        description: Пагинированные куплеты
+        items:
+          type: string
+        type: array
+    type: object
+  models.SongDetail:
+    properties:
+      artist_id:
+        type: integer
+      created_at:
+        type: string
+      group_name:
+        type: string
+      id:
+        type: integer
+      release_date:
+        type: string
+      song_name:
+        type: string
+      text:
+        description: Заменяем json.RawMessage на string
+        type: string
+    type: object
+  models.SongInput:
+    properties:
+      group:
+        description: Имя исполнителя
+        type: string
+      song:
+        description: Название песни
+        type: string
+    required:
+    - group
+    - song
+    type: object
+  models.SongUpdateResponse:
+    properties:
+      artist_name:
+        type: string
+      group_link:
+        type: string
+      release_date:
+        type: string
+      song_name:
+        type: string
+      text:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /info:
+    get:
+      consumes:
+      - application/json
+      description: Returns general information about the API, including title and
+        version.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get API Information
+      tags:
+      - info
+  /songs:
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новую песню к исполнителю. Если исполнитель не существует,
+        он будет создан.
+      parameters:
+      - description: Информация о песне
+        in: body
+        name: song
+        required: true
+        schema:
+          $ref: '#/definitions/models.SongInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно добавлена новая песня
+          schema:
+            $ref: '#/definitions/models.SongDetail'
+        "400":
+          description: Неверный запрос
+          schema:
+            type: string
+        "409":
+          description: Песня уже существует
+          schema:
+            type: string
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            type: string
+      summary: Добавить новую песню
+      tags:
+      - songs
+  /songs/{songName}:
+    delete:
+      parameters:
+      - description: Имя песни для удаления
+        in: path
+        name: songName
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Успешное удаление
+        "404":
+          description: Песня не найдена
+        "500":
+          description: Ошибка при удалении песни
+    put:
+      parameters:
+      - description: Имя песни для обновления
+        in: path
+        name: songName
+        required: true
+        type: string
+      - description: Обновленные данные песни. Все поля являются необязательными.
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SongUpdateResponse'
+      responses:
+        "200":
+          description: Успешное обновление песни
+          schema:
+            $ref: '#/definitions/models.SongUpdateResponse'
+        "400":
+          description: Некорректный запрос
+        "404":
+          description: Песня не найдена
+        "500":
+          description: Ошибка при обновлении песни
+  /songs/{songName}/lyrics:
+    get:
+      parameters:
+      - description: Имя песни для получения текста
+        in: path
+        name: songName
+        required: true
+        type: string
+      - default: 1
+        description: Номер страницы куплетов
+        in: query
+        name: verse_page
+        type: integer
+      - default: 3
+        description: Количество куплетов на странице
+        in: query
+        name: verse_limit
+        type: integer
+      responses:
+        "200":
+          description: Успешное получение текста песни
+          schema:
+            $ref: '#/definitions/models.PaginatedLyricsRespons'
+        "400":
+          description: Некорректный запрос
+        "404":
+          description: Песня не найдена
+        "500":
+          description: Ошибка при получении текста песни
+swagger: "2.0"

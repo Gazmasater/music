@@ -12,6 +12,14 @@ import (
 	"music.com/pkg/logger"
 )
 
+// GetInfoHandler godoc
+// @Summary Get API Information
+// @Description Returns general information about the API, including title and version.
+// @Tags info
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Router /info [get]
 func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger.Debug(ctx, "Entering GetInfoHandler")
@@ -118,6 +126,18 @@ func GetSongsHandler(db *gorm.DB) http.HandlerFunc {
 	}
 }
 
+// AddSongHandler добавляет новую песню в базу данных.
+// @Summary Добавить новую песню
+// @Description Добавляет новую песню к исполнителю. Если исполнитель не существует, он будет создан.
+// @Tags songs
+// @Accept json
+// @Produce json
+// @Param song body models.SongInput true "Информация о песне"
+// @Success 201 {object} models.SongDetail "Успешно добавлена новая песня"
+// @Failure 400 {string} string "Неверный запрос"
+// @Failure 409 {string} string "Песня уже существует"
+// @Failure 500 {string} string "Внутренняя ошибка сервера"
+// @Router /songs [post]
 func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -193,7 +213,26 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 	}
 }
 
-// Пример правильного объявления функции
+// DeleteSongHandler возвращает обработчик HTTP, который удаляет песню из базы данных по её имени.
+//
+// Параметры:
+//
+//	db *gorm.DB: экземпляр базы данных GORM, используемый для выполнения операций с БД.
+//
+// Возвращает:
+//
+//	http.HandlerFunc: функция-обработчик, которая принимает ResponseWriter и запрос,
+//	а затем выполняет логику удаления песни.
+//
+// В случае успешного удаления возвращает статус 204 No Content.
+// Если песня не найдена, возвращает статус 404 Not Found.
+// В случае ошибки при удалении возвращает статус 500 Internal Server Error.
+//
+// @Router /songs/{songName} [delete]
+// @Param songName path string true "Имя песни для удаления"
+// @Success 204 {object} nil "Успешное удаление"
+// @Failure 404 {object} nil "Песня не найдена"
+// @Failure 500 {object} nil "Ошибка при удалении песни"
 func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -218,6 +257,13 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 	}
 }
 
+// @Router /songs/{songName} [put]
+// @Param songName path string true "Имя песни для обновления"
+// @Param body body models.SongUpdateResponse true "Обновленные данные песни. Все поля являются необязательными."
+// @Success 200 {object} models.SongUpdateResponse "Успешное обновление песни"
+// @Failure 400 {object} nil "Некорректный запрос"
+// @Failure 404 {object} nil "Песня не найдена"
+// @Failure 500 {object} nil "Ошибка при обновлении песни"
 func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -233,22 +279,36 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
-		var updatedSong models.SongDetail
-		if err := json.NewDecoder(r.Body).Decode(&updatedSong); err != nil {
+		var updatedData models.SongUpdateResponse
+		if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
 			logger.Error(ctx, "Failed to decode updated song", "error", err)
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 
+		// Находим ID исполнителя по имени
+		if updatedData.ArtistName != "" {
+			var artist models.Artist
+			if err := db.Where("name = ?", updatedData.ArtistName).First(&artist).Error; err != nil {
+				logger.Error(ctx, "Artist not found", "artistName", updatedData.ArtistName)
+				http.Error(w, "Artist Not Found", http.StatusNotFound)
+				return
+			}
+			song.ArtistID = artist.ID
+		}
+
 		// Обновляем только необходимые поля
-		if updatedSong.SongName != "" {
-			song.SongName = updatedSong.SongName
+		if updatedData.SongName != "" {
+			song.SongName = updatedData.SongName
 		}
-		if !updatedSong.ReleaseDate.IsZero() {
-			song.ReleaseDate = updatedSong.ReleaseDate
+		if !updatedData.ReleaseDate.IsZero() {
+			song.ReleaseDate = updatedData.ReleaseDate
 		}
-		if updatedSong.Text != nil {
-			song.Text = updatedSong.Text
+		if updatedData.GroupLink != "" {
+			song.GroupName = updatedData.GroupLink
+		}
+		if len(updatedData.Text) != 0 {
+			song.Text = string(updatedData.Text)
 		}
 
 		if err := db.Save(&song).Error; err != nil {
@@ -258,13 +318,12 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		}
 
 		// Возвращаем обновленные данные
-		response := struct {
-			SongName    string          `json:"song_name"`
-			ReleaseDate time.Time       `json:"release_date"`
-			Text        json.RawMessage `json:"text"`
-		}{
+		// Возвращаем обновленные данные
+		response := models.SongUpdateResponse{
+			ArtistName:  updatedData.ArtistName,
 			SongName:    song.SongName,
 			ReleaseDate: song.ReleaseDate,
+			GroupLink:   song.GroupName,
 			Text:        song.Text,
 		}
 
@@ -279,6 +338,15 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 	}
 }
 
+// GetSongLyricsHandler получает текст песни с поддержкой пагинации.
+// @Router /songs/{songName}/lyrics [get]
+// @Param songName path string true "Имя песни для получения текста"
+// @Param verse_page query int false "Номер страницы куплетов" default(1)
+// @Param verse_limit query int false "Количество куплетов на странице" default(3)
+// @Success 200 {object} models.PaginatedLyricsRespons "Успешное получение текста песни"
+// @Failure 400 {object} nil "Некорректный запрос"
+// @Failure 404 {object} nil "Песня не найдена"
+// @Failure 500 {object} nil "Ошибка при получении текста песни"
 func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -313,7 +381,7 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 		}
 
 		var lyrics models.SongText
-		if err := json.Unmarshal(song.Text, &lyrics); err != nil {
+		if err := json.Unmarshal([]byte(song.Text), &lyrics); err != nil {
 			logger.Error(ctx, "Failed to parse song lyrics", "songName", songName, "error", err)
 			http.Error(w, "Failed to parse song lyrics", http.StatusInternalServerError)
 			return
@@ -339,7 +407,7 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 		paginatedVerses := lyrics.Verses[start:end]
 		logger.Debug(ctx, "Paginated verses", "start", start, "end", end)
 
-		response := models.PaginatedLyricsResponse{
+		response := models.PaginatedLyricsRespons{
 			SongName:    song.SongName,
 			VersePage:   versePage,
 			VerseLimit:  verseLimit,
