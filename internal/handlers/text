@@ -1,0 +1,11 @@
+// package handlers
+
+// import (
+// 	"regexp"
+// )
+
+// func formatLyrics(lyrics string) string {
+// 	re := regexp.MustCompile(`(\n{3,})`)
+// 	formattedLyrics := re.ReplaceAllString(lyrics, "\n\n")
+// 	return formattedLyrics
+// }
