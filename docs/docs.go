@@ -93,6 +93,7 @@ const docTemplate = `{
         },
         "/songs/{songName}": {
             "put": {
+                "description": "Обновляет данные существующей песни по имени. Поля, которые не переданы, останутся без изменений.",
                 "parameters": [
                     {
                         "type": "string",
@@ -270,6 +271,18 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SongText": {
+            "type": "object",
+            "properties": {
+                "verses": {
+                    "description": "Срез для хранения куплетов",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "models.SongUpdateResponse": {
             "type": "object",
             "properties": {
@@ -286,7 +299,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "text": {
-                    "type": "string"
+                    "description": "Измените на SongText",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.SongText"
+                        }
+                    ]
                 }
             }
         }

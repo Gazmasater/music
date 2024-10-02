@@ -49,6 +49,14 @@ definitions:
     - group
     - song
     type: object
+  models.SongText:
+    properties:
+      verses:
+        description: Срез для хранения куплетов
+        items:
+          type: string
+        type: array
+    type: object
   models.SongUpdateResponse:
     properties:
       artist_name:
@@ -60,7 +68,9 @@ definitions:
       song_name:
         type: string
       text:
-        type: string
+        allOf:
+        - $ref: '#/definitions/models.SongText'
+        description: Измените на SongText
     type: object
 info:
   contact: {}
@@ -133,6 +143,8 @@ paths:
         "500":
           description: Ошибка при удалении песни
     put:
+      description: Обновляет данные существующей песни по имени. Поля, которые не
+        переданы, останутся без изменений.
       parameters:
       - description: Имя песни для обновления
         in: path

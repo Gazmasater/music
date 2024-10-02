@@ -44,7 +44,7 @@ type SongUpdateResponse struct {
 	SongName    string    `json:"song_name,omitempty"`
 	ReleaseDate time.Time `json:"release_date,omitempty"`
 	GroupLink   string    `json:"group_link,omitempty"`
-	Text        string    `json:"text,omitempty"`
+	Text        SongText  `json:"text,omitempty"` // Измените на SongText
 }
 
 type PaginatedLyricsRespons struct {

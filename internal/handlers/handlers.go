@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -264,6 +266,7 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 // @Failure 400 {object} nil "Некорректный запрос"
 // @Failure 404 {object} nil "Песня не найдена"
 // @Failure 500 {object} nil "Ошибка при обновлении песни"
+// @Description Обновляет данные существующей песни по имени. Поля, которые не переданы, останутся без изменений.
 func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -286,6 +289,13 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
+		// Проверка на обязательные поля
+		if updatedData.SongName == "" && updatedData.ArtistName == "" && updatedData.GroupLink == "" && len(updatedData.Text.Verses) == 0 {
+			logger.Warn(ctx, "No fields to update")
+			http.Error(w, "Bad Request: No fields to update", http.StatusBadRequest)
+			return
+		}
+
 		// Находим ID исполнителя по имени
 		if updatedData.ArtistName != "" {
 			var artist models.Artist
@@ -295,21 +305,42 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 				return
 			}
 			song.ArtistID = artist.ID
+			logger.Debug(ctx, "Artist ID updated", "artistID", artist.ID)
 		}
 
 		// Обновляем только необходимые поля
 		if updatedData.SongName != "" {
 			song.SongName = updatedData.SongName
+			logger.Debug(ctx, "Song name updated", "newSongName", updatedData.SongName)
 		}
 		if !updatedData.ReleaseDate.IsZero() {
 			song.ReleaseDate = updatedData.ReleaseDate
+			logger.Debug(ctx, "Release date updated", "newReleaseDate", updatedData.ReleaseDate)
 		}
 		if updatedData.GroupLink != "" {
 			song.GroupName = updatedData.GroupLink
+			logger.Debug(ctx, "Group link updated", "newGroupLink", updatedData.GroupLink)
 		}
-		if len(updatedData.Text) != 0 {
-			song.Text = string(updatedData.Text)
+		if len(updatedData.Text.Verses) > 0 { // Проверяем, что куплеты не пустые
+			// Сериализация текстового поля в JSON
+			textJSON, err := json.Marshal(updatedData.Text)
+			if err != nil {
+				logger.Error(ctx, "Failed to marshal updated text", "error", err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			song.Text = string(textJSON) // Преобразуем JSON в строку
+			logger.Debug(ctx, "Song text updated", "newText", updatedData.Text)
 		}
+
+		// Логирование данных, которые будут сохранены в базе
+		songJSON, err := json.Marshal(song)
+		if err != nil {
+			logger.Error(ctx, "Failed to marshal song for logging", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		logger.Debug(ctx, "Saving song to database", "songData", string(songJSON))
 
 		if err := db.Save(&song).Error; err != nil {
 			logger.Error(ctx, "Failed to update song in database", "error", err)
@@ -318,13 +349,12 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		}
 
 		// Возвращаем обновленные данные
-		// Возвращаем обновленные данные
 		response := models.SongUpdateResponse{
 			ArtistName:  updatedData.ArtistName,
 			SongName:    song.SongName,
 			ReleaseDate: song.ReleaseDate,
 			GroupLink:   song.GroupName,
-			Text:        song.Text,
+			Text:        updatedData.Text, // Возвращаем обновленный текст
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -380,12 +410,41 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
-		var lyrics models.SongText
-		if err := json.Unmarshal([]byte(song.Text), &lyrics); err != nil {
-			logger.Error(ctx, "Failed to parse song lyrics", "songName", songName, "error", err)
-			http.Error(w, "Failed to parse song lyrics", http.StatusInternalServerError)
-			return
+		// Проверим текст песни в сыром виде
+		logger.Debug(ctx, "Raw song text", "rawText", fmt.Sprintf("%q", song.Text))
+
+		// Шаг 1: заменяем любые виды переносов строк на разделители абзацев
+		songText := strings.ReplaceAll(song.Text, "\\n\\n", "[PARAGRAPH_BREAK]") // двойные экранированные
+		// songText = strings.ReplaceAll(songText, "\r\n", "[PARAGRAPH_BREAK]")     // переносы для Windows
+		// songText = strings.ReplaceAll(songText, "\n\n", "[PARAGRAPH_BREAK]")     // обычные двойные
+		// songText = strings.ReplaceAll(songText, "\n", "\n")                      // простые переносы строк
+
+		// Логируем промежуточный результат
+		logger.Debug(ctx, "Text after replacing newlines", "songText", songText)
+
+		// Шаг 2: разделяем текст на абзацы
+		paragraphs := strings.Split(songText, "[PARAGRAPH_BREAK]")
+		println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111")
+		// Логируем абзацы после разделения
+		logger.Debug(ctx, "Paragraphs split", "paragraphs", paragraphs)
+		println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111")
+
+		// Создаем срез для хранения куплетов
+		var verses []string
+		for idx, paragraph := range paragraphs {
+			// Разбиваем каждый абзац на строки по новой строке
+			lines := strings.Split(strings.TrimSpace(paragraph), "\n")
+
+			// Логируем строки внутри абзаца
+			logger.Debug(ctx, "Lines in paragraph", "iteration", idx, "lines", lines)
+
+			// Объединяем абзацы в массив куплетов
+			verses = append(verses, lines...)
 		}
+
+		// Сохраняем куплеты в структуру lyrics
+		var lyrics models.SongText
+		lyrics.Verses = verses
 
 		logger.Debug(ctx, "Lyrics retrieved", "totalVerses", len(lyrics.Verses))
 
@@ -407,6 +466,7 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 		paginatedVerses := lyrics.Verses[start:end]
 		logger.Debug(ctx, "Paginated verses", "start", start, "end", end)
 
+		// Формируем ответ с куплетами и пагинацией
 		response := models.PaginatedLyricsRespons{
 			SongName:    song.SongName,
 			VersePage:   versePage,
@@ -415,6 +475,7 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 			Verses:      paginatedVerses,
 		}
 
+		// Отправляем ответ в формате JSON
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			logger.Error(ctx, "Failed to encode response", "error", err)
