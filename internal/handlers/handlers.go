@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi"
@@ -428,36 +427,16 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
-		// Проверим текст песни в сыром виде
+		// Проверяем текст песни, предполагая, что он уже разделен на куплеты
 		logger.Debug(ctx, "Raw song text", "rawText", fmt.Sprintf("%q", song.Text))
 
-		// Шаг 1: заменяем любые виды переносов строк на разделители абзацев
-		songText := strings.ReplaceAll(song.Text, "\\n\\n", "[PARAGRAPH_BREAK]") // двойные экранированные
-
-		// Логируем промежуточный результат
-		logger.Debug(ctx, "Text after replacing newlines", "songText", songText)
-
-		// Шаг 2: разделяем текст на абзацы
-		paragraphs := strings.Split(songText, "[PARAGRAPH_BREAK]")
-		// Логируем абзацы после разделения
-		logger.Debug(ctx, "Paragraphs split", "paragraphs", paragraphs)
-
-		// Создаем срез для хранения куплетов
-		var verses []string
-		for idx, paragraph := range paragraphs {
-			// Разбиваем каждый абзац на строки по новой строке
-			lines := strings.Split(strings.TrimSpace(paragraph), "\n")
-
-			// Логируем строки внутри абзаца
-			logger.Debug(ctx, "Lines in paragraph", "iteration", idx, "lines", lines)
-
-			// Объединяем абзацы в массив куплетов
-			verses = append(verses, lines...)
-		}
-
-		// Сохраняем куплеты в структуру lyrics
+		// Преобразуем текст в структуру SongText
 		var lyrics models.SongText
-		lyrics.Verses = verses
+		if err := json.Unmarshal([]byte(song.Text), &lyrics); err != nil {
+			logger.Error(ctx, "Failed to unmarshal song text", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		logger.Debug(ctx, "Lyrics retrieved", "totalVerses", len(lyrics.Verses))
 
