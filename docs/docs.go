@@ -40,6 +40,53 @@ const docTemplate = `{
             }
         },
         "/songs": {
+            "get": {
+                "description": "Получение списка песен с поддержкой фильтрации и пагинации.",
+                "tags": [
+                    "songs"
+                ],
+                "summary": "Получить список песен",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Поле для фильтрации (song_name, artist_name, release_date)",
+                        "name": "field",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Значение для фильтрации",
+                        "name": "value",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Количество записей на странице",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Номер страницы",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешное получение списка песен",
+                        "schema": {
+                            "$ref": "#/definitions/models.SongsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверное поле для фильтрации"
+                    },
+                    "500": {
+                        "description": "Ошибка на сервере"
+                    }
+                }
+            },
             "post": {
                 "description": "Добавляет новую песню к исполнителю. Если исполнитель не существует, он будет создан.",
                 "consumes": [
@@ -94,6 +141,7 @@ const docTemplate = `{
         "/songs/{songName}": {
             "put": {
                 "description": "Обновляет данные существующей песни по имени. Поля, которые не переданы, останутся без изменений.",
+                "summary": "Изменение данных песни",
                 "parameters": [
                     {
                         "type": "string",
@@ -131,6 +179,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "summary": "Удалить песню",
                 "parameters": [
                     {
                         "type": "string",
@@ -155,6 +204,7 @@ const docTemplate = `{
         },
         "/songs/{songName}/lyrics": {
             "get": {
+                "summary": "Получение текста песни с пагинацией по куплетам",
                 "parameters": [
                     {
                         "type": "string",
@@ -305,6 +355,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.SongText"
                         }
                     ]
+                }
+            }
+        },
+        "models.SongsResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "songs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SongDetail"
+                    }
+                },
+                "total_items": {
+                    "type": "integer"
                 }
             }
         }

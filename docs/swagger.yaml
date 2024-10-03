@@ -72,6 +72,19 @@ definitions:
         - $ref: '#/definitions/models.SongText'
         description: Измените на SongText
     type: object
+  models.SongsResponse:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      songs:
+        items:
+          $ref: '#/definitions/models.SongDetail'
+        type: array
+      total_items:
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
@@ -93,6 +106,37 @@ paths:
       tags:
       - info
   /songs:
+    get:
+      description: Получение списка песен с поддержкой фильтрации и пагинации.
+      parameters:
+      - description: Поле для фильтрации (song_name, artist_name, release_date)
+        in: query
+        name: field
+        type: string
+      - description: Значение для фильтрации
+        in: query
+        name: value
+        type: string
+      - description: Количество записей на странице
+        in: query
+        name: limit
+        type: integer
+      - description: Номер страницы
+        in: query
+        name: page
+        type: integer
+      responses:
+        "200":
+          description: Успешное получение списка песен
+          schema:
+            $ref: '#/definitions/models.SongsResponse'
+        "400":
+          description: Неверное поле для фильтрации
+        "500":
+          description: Ошибка на сервере
+      summary: Получить список песен
+      tags:
+      - songs
     post:
       consumes:
       - application/json
@@ -142,6 +186,7 @@ paths:
           description: Песня не найдена
         "500":
           description: Ошибка при удалении песни
+      summary: Удалить песню
     put:
       description: Обновляет данные существующей песни по имени. Поля, которые не
         переданы, останутся без изменений.
@@ -168,6 +213,7 @@ paths:
           description: Песня не найдена
         "500":
           description: Ошибка при обновлении песни
+      summary: Изменение данных песни
   /songs/{songName}/lyrics:
     get:
       parameters:
@@ -197,4 +243,5 @@ paths:
           description: Песня не найдена
         "500":
           description: Ошибка при получении текста песни
+      summary: Получение текста песни с пагинацией по куплетам
 swagger: "2.0"

@@ -54,3 +54,10 @@ type PaginatedLyricsRespons struct {
 	TotalVerses int      `json:"total_verses"` // Общее количество куплетов
 	Verses      []string `json:"verses"`       // Пагинированные куплеты
 }
+
+type SongsResponse struct {
+	TotalItems int          `json:"total_items"`
+	Page       int          `json:"page"`
+	Limit      int          `json:"limit"`
+	Songs      []SongDetail `json:"songs"`
+}

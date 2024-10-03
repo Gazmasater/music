@@ -39,6 +39,35 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 	logger.Info(ctx, "API info requested")
 }
 
+// GetSongsHandler возвращает обработчик HTTP для получения списка песен с поддержкой фильтрации и пагинации.
+//
+// Параметры запроса:
+//
+// - field: Поле для фильтрации (допустимые значения: song_name, artist_name, release_date).
+// - value: Значение для фильтрации.
+// - limit: Количество записей на странице (по умолчанию 10).
+// - page: Номер страницы для пагинации (по умолчанию 1).
+//
+// Параметры:
+//
+//	db *gorm.DB: экземпляр базы данных GORM, используемый для выполнения операций с БД.
+//
+// Возвращает:
+//
+//	http.HandlerFunc: функция-обработчик, которая принимает ResponseWriter и запрос,
+//	а затем выполняет логику получения песен.
+//
+// @Summary Получить список песен
+// @Description Получение списка песен с поддержкой фильтрации и пагинации.
+// @Tags songs
+// @Param field query string false "Поле для фильтрации (song_name, artist_name, release_date)"
+// @Param value query string false "Значение для фильтрации"
+// @Param limit query int false "Количество записей на странице"
+// @Param page query int false "Номер страницы"
+// @Success 200 {object} models.SongsResponse "Успешное получение списка песен"
+// @Failure 400 {object} nil "Неверное поле для фильтрации"
+// @Failure 500 {object} nil "Ошибка на сервере"
+// @Router /songs [get]
 func GetSongsHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -105,18 +134,12 @@ func GetSongsHandler(db *gorm.DB) http.HandlerFunc {
 		logger.DebugKV(ctx, "Fetched songs count", "count", len(songs))
 
 		// Формируем ответ
-		response := struct {
-			TotalItems int                 `json:"total_items"`
-			Page       int                 `json:"page"`
-			Limit      int                 `json:"limit"`
-			Songs      []models.SongDetail `json:"songs"`
-		}{
+		response := models.SongsResponse{
 			TotalItems: len(songs),
 			Page:       page,
 			Limit:      limit,
 			Songs:      songs,
 		}
-
 		// Отправляем ответ
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -217,14 +240,7 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 
 // DeleteSongHandler возвращает обработчик HTTP, который удаляет песню из базы данных по её имени.
 //
-// Параметры:
-//
-//	db *gorm.DB: экземпляр базы данных GORM, используемый для выполнения операций с БД.
-//
-// Возвращает:
-//
-//	http.HandlerFunc: функция-обработчик, которая принимает ResponseWriter и запрос,
-//	а затем выполняет логику удаления песни.
+// @Summary Удалить песню
 //
 // В случае успешного удаления возвращает статус 204 No Content.
 // Если песня не найдена, возвращает статус 404 Not Found.
@@ -260,6 +276,7 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 }
 
 // @Router /songs/{songName} [put]
+// @Summary Изменение данных песни
 // @Param songName path string true "Имя песни для обновления"
 // @Param body body models.SongUpdateResponse true "Обновленные данные песни. Все поля являются необязательными."
 // @Success 200 {object} models.SongUpdateResponse "Успешное обновление песни"
@@ -369,6 +386,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 }
 
 // GetSongLyricsHandler получает текст песни с поддержкой пагинации.
+// @Summary Получение текста песни с пагинацией по куплетам
 // @Router /songs/{songName}/lyrics [get]
 // @Param songName path string true "Имя песни для получения текста"
 // @Param verse_page query int false "Номер страницы куплетов" default(1)
@@ -415,19 +433,14 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Шаг 1: заменяем любые виды переносов строк на разделители абзацев
 		songText := strings.ReplaceAll(song.Text, "\\n\\n", "[PARAGRAPH_BREAK]") // двойные экранированные
-		// songText = strings.ReplaceAll(songText, "\r\n", "[PARAGRAPH_BREAK]")     // переносы для Windows
-		// songText = strings.ReplaceAll(songText, "\n\n", "[PARAGRAPH_BREAK]")     // обычные двойные
-		// songText = strings.ReplaceAll(songText, "\n", "\n")                      // простые переносы строк
 
 		// Логируем промежуточный результат
 		logger.Debug(ctx, "Text after replacing newlines", "songText", songText)
 
 		// Шаг 2: разделяем текст на абзацы
 		paragraphs := strings.Split(songText, "[PARAGRAPH_BREAK]")
-		println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111")
 		// Логируем абзацы после разделения
 		logger.Debug(ctx, "Paragraphs split", "paragraphs", paragraphs)
-		println("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!111")
 
 		// Создаем срез для хранения куплетов
 		var verses []string
