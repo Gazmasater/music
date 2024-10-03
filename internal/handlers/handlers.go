@@ -40,23 +40,6 @@ func GetInfoHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetSongsHandler возвращает обработчик HTTP для получения списка песен с поддержкой фильтрации и пагинации.
-//
-// Параметры запроса:
-//
-// - field: Поле для фильтрации (допустимые значения: song_name, artist_name, release_date).
-// - value: Значение для фильтрации.
-// - limit: Количество записей на странице (по умолчанию 10).
-// - page: Номер страницы для пагинации (по умолчанию 1).
-//
-// Параметры:
-//
-//	db *gorm.DB: экземпляр базы данных GORM, используемый для выполнения операций с БД.
-//
-// Возвращает:
-//
-//	http.HandlerFunc: функция-обработчик, которая принимает ResponseWriter и запрос,
-//	а затем выполняет логику получения песен.
-//
 // @Summary Получить список песен
 // @Description Получение списка песен с поддержкой фильтрации и пагинации.
 // @Tags songs
@@ -169,10 +152,7 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 		logger.Debug(ctx, "Entering AddSongHandler")
 
 		// Структура для получения базовой информации о песне
-		var songInput struct {
-			Group string `json:"group" binding:"required"` // Имя исполнителя
-			Song  string `json:"song" binding:"required"`  // Название песни
-		}
+		var songInput models.SongInput
 
 		// Декодируем запрос
 		if err := json.NewDecoder(r.Body).Decode(&songInput); err != nil {
@@ -239,13 +219,7 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 }
 
 // DeleteSongHandler возвращает обработчик HTTP, который удаляет песню из базы данных по её имени.
-//
 // @Summary Удалить песню
-//
-// В случае успешного удаления возвращает статус 204 No Content.
-// Если песня не найдена, возвращает статус 404 Not Found.
-// В случае ошибки при удалении возвращает статус 500 Internal Server Error.
-//
 // @Router /songs/{songName} [delete]
 // @Param songName path string true "Имя песни для удаления"
 // @Success 204 {object} nil "Успешное удаление"

@@ -12,6 +12,9 @@ import (
 	"music.com/pkg/logger"
 )
 
+// @title Music API
+// @version 1.0
+// @description Это API для работы с музыкальной библиотекой, позволяющее получать, добавлять, обновлять и удалять песни.
 func main() {
 	// Загружаем переменные окружения
 	config.LoadEnv()

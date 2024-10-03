@@ -34,8 +34,8 @@ type Song struct {
 }
 
 type SongInput struct {
-	Group string `json:"group" binding:"required"` // Имя исполнителя
-	Song  string `json:"song" binding:"required"`  // Название песни
+	Group string `json:"group" validate:"required"`
+	Song  string `json:"song" validate:"required"`
 }
 
 // SongUpdateResponse представляет структуру ответа на обновление песни
