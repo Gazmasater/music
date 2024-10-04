@@ -27,5 +27,5 @@ COPY --from=builder /app/docs /app/docs
 # Устанавливаем необходимые зависимости
 RUN apk add --no-cache libc6-compat ca-certificates
 
-# Запускаем приложение
+
 CMD ["./main"]
