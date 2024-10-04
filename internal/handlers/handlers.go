@@ -8,11 +8,12 @@ import (
 	"strconv"
 	"time"
 
+	"music/internal/models"
+	"music/internal/utils"
+	"music/pkg/logger"
+
 	"github.com/go-chi/chi"
 	"gorm.io/gorm"
-	"music.com/internal/models"
-	"music.com/internal/utils"
-	"music.com/pkg/logger"
 )
 
 // GetInfoHandler godoc
@@ -170,10 +171,7 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 		logger.Debug(ctx, "Entering AddSongHandler")
 
 		// Структура для получения базовой информации о песне
-		var songInput struct {
-			Group string `json:"group" binding:"required"` // Имя исполнителя
-			Song  string `json:"song" binding:"required"`  // Название песни
-		}
+		var songInput models.SongInput
 
 		// Декодируем запрос
 		if err := json.NewDecoder(r.Body).Decode(&songInput); err != nil {
@@ -184,16 +182,20 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		logger.DebugKV(ctx, "Decoded song input", "song_input", songInput)
 
-		// Нормализуем имя исполнителя и название песни с помощью функции из utils
-		normalizedGroup := utils.NormalizeSongName(songInput.Group)
-		normalizedSong := utils.NormalizeSongName(songInput.Song)
+		// Нормализация названия песни
+		songInput.Song = utils.NormalizeSongName(songInput.Song)
+		logger.DebugKV(ctx, "Normalized song input", "song_input", songInput)
+
+		// Нормализация имени исполнителя
+		songInput.Group = utils.NormalizeSongName(songInput.Group) // Здесь используем ту же функцию
+		logger.DebugKV(ctx, "Normalized artist name", "artist_name", songInput.Group)
 
 		// Проверка на существование исполнителя
 		var artist models.Artist
-		if err := db.Where("name = ?", normalizedGroup).First(&artist).Error; err != nil {
-			logger.DebugKV(ctx, "Artist not found, creating new artist", "artist_name", normalizedGroup)
+		if err := db.Where("name = ?", songInput.Group).First(&artist).Error; err != nil {
+			logger.DebugKV(ctx, "Artist not found, creating new artist", "artist_name", songInput.Group)
 			// Если исполнитель не существует, создаем нового
-			artist = models.Artist{Name: normalizedGroup}
+			artist = models.Artist{Name: songInput.Group}
 			if err := db.Create(&artist).Error; err != nil {
 				logger.Error(ctx, "Failed to add new artist to database", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -206,7 +208,7 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Проверка на существование песни с таким названием у данного исполнителя
 		var existingSong models.SongDetail
-		if err := db.Where("song_name = ? AND artist_id = ?", normalizedSong, artist.ID).First(&existingSong).Error; err == nil {
+		if err := db.Where("song_name = ? AND artist_id = ?", songInput.Song, artist.ID).First(&existingSong).Error; err == nil {
 			// Песня уже существует
 			logger.Error(ctx, "Song already exists", err)
 			http.Error(w, "Song already exists", http.StatusConflict)
@@ -217,9 +219,9 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Создаем новую песню с минимальной информацией (название и исполнитель)
 		newSong := models.SongDetail{
-			ArtistID:  artist.ID,
-			SongName:  normalizedSong,
-			GroupName: normalizedGroup,
+			ArtistID:  artist.ID, // Приведение типа
+			SongName:  songInput.Song,
+			GroupName: songInput.Group,
 		}
 
 		logger.DebugKV(ctx, "Creating new song", "new_song", newSong)
@@ -345,7 +347,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Обновление информации о исполнителе
 		if updatedData.ArtistName != "" {
-			normalizedArtistName := utils.NormalizeSongName(updatedData.ArtistName)
+			normalizedArtistName := utils.NormalizeSongName(updatedData.ArtistName) // Нормализуем имя исполнителя
 			var artist models.Artist
 			if err := db.Where("name = ?", normalizedArtistName).First(&artist).Error; err != nil {
 				// Если исполнитель не найден, возвращаем ошибку

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"time"
 )
 
@@ -60,4 +61,15 @@ type SongsResponse struct {
 	Page       int          `json:"page"`
 	Limit      int          `json:"limit"`
 	Songs      []SongDetail `json:"songs"`
+}
+
+// Validate проверяет, что поля в SongInput не пустые.
+func (si *SongInput) Validate() error {
+	if si.Group == "" {
+		return errors.New("artist name cannot be empty")
+	}
+	if si.Song == "" {
+		return errors.New("song name cannot be empty")
+	}
+	return nil
 }
