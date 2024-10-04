@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
-	"strings"
 	"time"
+
+	"music/internal/models"
+	"music/internal/utils"
+	"music/pkg/logger"
 
 	"github.com/go-chi/chi"
 	"gorm.io/gorm"
-	"music.com/internal/models"
-	"music.com/pkg/logger"
 )
 
 // GetInfoHandler godoc
@@ -163,6 +165,14 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		logger.DebugKV(ctx, "Decoded song input", "song_input", songInput)
 
+		// Нормализация названия песни
+		songInput.Song = utils.NormalizeSongName(songInput.Song)
+		logger.DebugKV(ctx, "Normalized song input", "song_input", songInput)
+
+		// Нормализация имени исполнителя
+		songInput.Group = utils.NormalizeSongName(songInput.Group) // Здесь используем ту же функцию
+		logger.DebugKV(ctx, "Normalized artist name", "artist_name", songInput.Group)
+
 		// Проверка на существование исполнителя
 		var artist models.Artist
 		if err := db.Where("name = ?", songInput.Group).First(&artist).Error; err != nil {
@@ -230,9 +240,22 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 		ctx := r.Context()
 		songName := chi.URLParam(r, "songName")
 
+		// Декодируем имя песни для обработки специальных символов
+		decodedSongName, err := url.QueryUnescape(songName)
+		if err != nil {
+			logger.Error(ctx, "Failed to decode song name", "error", err)
+			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
+			return
+		}
+		logger.Debug(ctx, "Decoded song name", "decodedSongName", decodedSongName)
+
+		// Нормализуем имя песни с помощью utils
+		normalizedSongName := utils.NormalizeSongName(decodedSongName)
+		logger.Debug(ctx, "Нормализуем", "normalizedSongName", normalizedSongName)
+
 		var song models.SongDetail
-		if err := db.Where("song_name = ?", songName).First(&song).Error; err != nil {
-			logger.Warn(ctx, "Attempt to delete non-existent song", "songName", songName)
+		if err := db.Where("song_name = ?", normalizedSongName).First(&song).Error; err != nil {
+			logger.Warn(ctx, "Attempt to delete non-existent song", "songName", normalizedSongName)
 			http.Error(w, "Not Found", http.StatusNotFound)
 			return
 		}
@@ -263,35 +286,49 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		ctx := r.Context()
 		logger.Debug(ctx, "Entering UpdateSongHandler")
 
+		// Получаем название песни из URL и декодируем его
 		songName := chi.URLParam(r, "songName")
-		logger.Debug(ctx, "Song name from URL param", "songName", songName)
-
-		var song models.SongDetail
-		if err := db.Where("song_name = ?", songName).First(&song).Error; err != nil {
-			logger.Warn(ctx, "Attempt to update non-existent song", "songName", songName, "error", err)
-			http.Error(w, "Not Found", http.StatusNotFound)
+		decodedSongName, err := url.QueryUnescape(songName)
+		if err != nil {
+			logger.Error(ctx, "Failed to decode song name", "error", err)
+			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
 			return
 		}
 
+		// Нормализуем название песни через utils
+		normalizedSongName := utils.NormalizeSongName(decodedSongName)
+		logger.Debug(ctx, "Normalized song name from URL param", "songName", normalizedSongName)
+
+		// Проверяем, существует ли песня
+		var song models.SongDetail
+		if err := db.Where("song_name = ?", normalizedSongName).First(&song).Error; err != nil {
+			logger.Warn(ctx, "Attempt to update non-existent song", "songName", normalizedSongName, "error", err)
+			http.Error(w, "Song Not Found", http.StatusNotFound)
+			return
+		}
+
+		// Получаем данные для обновления
 		var updatedData models.SongUpdateResponse
 		if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
-			logger.Error(ctx, "Failed to decode updated song", "error", err)
-			http.Error(w, "Bad Request", http.StatusBadRequest)
+			logger.Error(ctx, "Failed to decode updated song data", "error", err)
+			http.Error(w, "Bad Request: Invalid data format", http.StatusBadRequest)
 			return
 		}
 
-		// Проверка на обязательные поля
+		// Проверка на наличие полей для обновления
 		if updatedData.SongName == "" && updatedData.ArtistName == "" && updatedData.GroupLink == "" && len(updatedData.Text.Verses) == 0 {
 			logger.Warn(ctx, "No fields to update")
 			http.Error(w, "Bad Request: No fields to update", http.StatusBadRequest)
 			return
 		}
 
-		// Находим ID исполнителя по имени
+		// Обновление информации о исполнителе
 		if updatedData.ArtistName != "" {
+			normalizedArtistName := utils.NormalizeSongName(updatedData.ArtistName) // Нормализуем имя исполнителя
 			var artist models.Artist
-			if err := db.Where("name = ?", updatedData.ArtistName).First(&artist).Error; err != nil {
-				logger.Error(ctx, "Artist not found", "artistName", updatedData.ArtistName)
+			if err := db.Where("name = ?", normalizedArtistName).First(&artist).Error; err != nil {
+				// Если исполнитель не найден, возвращаем ошибку
+				logger.Error(ctx, "Artist not found", "artistName", normalizedArtistName)
 				http.Error(w, "Artist Not Found", http.StatusNotFound)
 				return
 			}
@@ -299,53 +336,46 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			logger.Debug(ctx, "Artist ID updated", "artistID", artist.ID)
 		}
 
-		// Обновляем только необходимые поля
+		// Обновление полей песни
 		if updatedData.SongName != "" {
-			song.SongName = updatedData.SongName
-			logger.Debug(ctx, "Song name updated", "newSongName", updatedData.SongName)
+			normalizedNewSongName := utils.NormalizeSongName(updatedData.SongName)
+			song.SongName = normalizedNewSongName
+			logger.Debug(ctx, "Song name updated", "newSongName", normalizedNewSongName)
 		}
 		if !updatedData.ReleaseDate.IsZero() {
 			song.ReleaseDate = updatedData.ReleaseDate
 			logger.Debug(ctx, "Release date updated", "newReleaseDate", updatedData.ReleaseDate)
 		}
 		if updatedData.GroupLink != "" {
-			song.GroupName = updatedData.GroupLink
-			logger.Debug(ctx, "Group link updated", "newGroupLink", updatedData.GroupLink)
+			normalizedGroupLink := utils.NormalizeSongName(updatedData.GroupLink)
+			song.GroupName = normalizedGroupLink
+			logger.Debug(ctx, "Group link updated", "newGroupLink", normalizedGroupLink)
 		}
-		if len(updatedData.Text.Verses) > 0 { // Проверяем, что куплеты не пустые
-			// Сериализация текстового поля в JSON
+		if len(updatedData.Text.Verses) > 0 {
 			textJSON, err := json.Marshal(updatedData.Text)
 			if err != nil {
 				logger.Error(ctx, "Failed to marshal updated text", "error", err)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
 			}
-			song.Text = string(textJSON) // Преобразуем JSON в строку
+			song.Text = string(textJSON)
 			logger.Debug(ctx, "Song text updated", "newText", updatedData.Text)
 		}
 
-		// Логирование данных, которые будут сохранены в базе
-		songJSON, err := json.Marshal(song)
-		if err != nil {
-			logger.Error(ctx, "Failed to marshal song for logging", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-		logger.Debug(ctx, "Saving song to database", "songData", string(songJSON))
-
+		// Сохранение обновленной песни в базу данных
 		if err := db.Save(&song).Error; err != nil {
 			logger.Error(ctx, "Failed to update song in database", "error", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		// Возвращаем обновленные данные
+		// Формирование ответа с обновленными данными
 		response := models.SongUpdateResponse{
 			ArtistName:  updatedData.ArtistName,
 			SongName:    song.SongName,
 			ReleaseDate: song.ReleaseDate,
 			GroupLink:   song.GroupName,
-			Text:        updatedData.Text, // Возвращаем обновленный текст
+			Text:        updatedData.Text,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -373,9 +403,18 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// Извлекаем название песни из параметров маршрута
+		// Извлекаем и декодируем название песни из параметров маршрута
 		songName := chi.URLParam(r, "songName")
-		logger.Debug(ctx, "Request to get song lyrics", "songName", songName)
+		decodedSongName, err := url.QueryUnescape(songName)
+		if err != nil {
+			logger.Error(ctx, "Failed to decode song name", "error", err)
+			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
+			return
+		}
+
+		// Нормализуем название песни
+		normalizedSongName := utils.NormalizeSongName(decodedSongName)
+		logger.Debug(ctx, "Request to get song lyrics", "songName", normalizedSongName)
 
 		// Параметры пагинации (страница и лимит куплетов на странице)
 		versePageStr := r.URL.Query().Get("verse_page")
@@ -395,43 +434,24 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 
 		logger.Debug(ctx, "Pagination params", "versePage", versePage, "verseLimit", verseLimit)
 
+		// Поиск песни в базе данных
 		var song models.SongDetail
-		if err := db.Where("song_name = ?", songName).First(&song).Error; err != nil {
-			logger.Warn(ctx, "Song not found", "songName", songName)
+		if err := db.Where("song_name = ?", normalizedSongName).First(&song).Error; err != nil {
+			logger.Warn(ctx, "Song not found", "songName", normalizedSongName)
 			http.Error(w, "Song not found", http.StatusNotFound)
 			return
 		}
 
-		// Проверим текст песни в сыром виде
+		// Проверяем текст песни, предполагая, что он уже разделен на куплеты
 		logger.Debug(ctx, "Raw song text", "rawText", fmt.Sprintf("%q", song.Text))
 
-		// Шаг 1: заменяем любые виды переносов строк на разделители абзацев
-		songText := strings.ReplaceAll(song.Text, "\\n\\n", "[PARAGRAPH_BREAK]") // двойные экранированные
-
-		// Логируем промежуточный результат
-		logger.Debug(ctx, "Text after replacing newlines", "songText", songText)
-
-		// Шаг 2: разделяем текст на абзацы
-		paragraphs := strings.Split(songText, "[PARAGRAPH_BREAK]")
-		// Логируем абзацы после разделения
-		logger.Debug(ctx, "Paragraphs split", "paragraphs", paragraphs)
-
-		// Создаем срез для хранения куплетов
-		var verses []string
-		for idx, paragraph := range paragraphs {
-			// Разбиваем каждый абзац на строки по новой строке
-			lines := strings.Split(strings.TrimSpace(paragraph), "\n")
-
-			// Логируем строки внутри абзаца
-			logger.Debug(ctx, "Lines in paragraph", "iteration", idx, "lines", lines)
-
-			// Объединяем абзацы в массив куплетов
-			verses = append(verses, lines...)
-		}
-
-		// Сохраняем куплеты в структуру lyrics
+		// Преобразуем текст в структуру SongText
 		var lyrics models.SongText
-		lyrics.Verses = verses
+		if err := json.Unmarshal([]byte(song.Text), &lyrics); err != nil {
+			logger.Error(ctx, "Failed to unmarshal song text", "error", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 
 		logger.Debug(ctx, "Lyrics retrieved", "totalVerses", len(lyrics.Verses))
 
@@ -470,6 +490,6 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
-		logger.Info(ctx, "Song lyrics retrieved successfully", "songName", songName)
+		logger.Info(ctx, "Song lyrics retrieved successfully", "songName", normalizedSongName)
 	}
 }

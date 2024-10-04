@@ -3,11 +3,12 @@ package router
 import (
 	"net/http"
 
+	_ "music/docs" // Импортируйте сгенерированные файлы Swagger
+	"music/internal/handlers"
+
 	"github.com/go-chi/chi"
-	httpSwagger "github.com/swaggo/http-swagger" // Импортируйте для Swagger
+	httpSwagger "github.com/swaggo/http-swagger"
 	"gorm.io/gorm"
-	_ "music.com/docs" // Импортируйте сгенерированные файлы Swagger
-	"music.com/internal/handlers"
 )
 
 func NewRouter(db *gorm.DB) http.Handler {

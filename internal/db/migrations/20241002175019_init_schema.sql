@@ -17,10 +17,18 @@ CREATE TABLE song_details (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (song_name, artist_id)
 );
+
+-- Индекс на поле artist_id для оптимизации запросов по исполнителям
+CREATE INDEX idx_song_details_artist_id ON song_details (artist_id);
+
+-- Индекс на поле release_date для ускорения сортировки по дате выхода
+CREATE INDEX idx_song_details_release_date ON song_details (release_date);
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+DROP INDEX IF EXISTS idx_song_details_artist_id;
+DROP INDEX IF EXISTS idx_song_details_release_date;
 DROP TABLE song_details;
 DROP TABLE artists;
 -- +goose StatementEnd

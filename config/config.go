@@ -6,10 +6,11 @@ import (
 	"strconv"
 	"time"
 
+	"music/pkg/logger"
+
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"music.com/pkg/logger"
 )
 
 const (

@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"music.com/config"
-	"music.com/internal/db"
+	"music/config"
+	"music/internal/db"
 
-	"music.com/internal/router"
-	"music.com/pkg/logger"
+	"music/internal/router"
+	"music/pkg/logger"
 )
 
 // @title Music API

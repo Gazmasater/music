@@ -3,10 +3,11 @@ package db
 import (
 	"context"
 
-	"gorm.io/gorm"
-	"music.com/internal/models"
+	"music/internal/models"
 
-	"music.com/pkg/logger"
+	"gorm.io/gorm"
+
+	"music/pkg/logger"
 )
 
 func Migrate(db *gorm.DB) {
