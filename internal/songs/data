@@ -1,12 +1,12 @@
-package songs
+// package songs
 
-import "music.com/internal/models"
+// import "music.com/internal/models"
 
-var Songs = []models.SongDetail{
-	{
-		Group:       "Любэ",
-		Song:        "Комбат",
-		ReleaseDate: "1995",
+// var Songs = []models.SongDetail{
+// 	{
+// 		Group:       "Любэ",
+// 		Song:        "Комбат",
+// 		ReleaseDate: "1995",
 		Text: `А на войне, как на войне – патроны, водка, махорка в цене.
 А на войне нелёгкий труд, а сам стреляй, а то убьют.
 А на войне, как на войне, подруга, вспомни обо мне.
@@ -36,6 +36,6 @@ var Songs = []models.SongDetail{
 
 А на войне, как на войне... На войне, как на войне...
 На войне, как на войне... На войне, как на войне...`,
-		Link: "https://yandex.ru/video/preview/16301238397241209198",
-	},
-}
+// 		Link: "https://yandex.ru/video/preview/16301238397241209198",
+// 	},
+// }
