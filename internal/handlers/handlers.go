@@ -62,6 +62,10 @@ func GetSongsHandler(db *gorm.DB) http.HandlerFunc {
 		field := r.URL.Query().Get("field")
 		value := r.URL.Query().Get("value")
 
+		// Нормализуем поля фильтрации
+		normalizedField := utils.NormalizeSongName(field)
+		normalizedValue := utils.NormalizeSongName(value)
+
 		// Параметры пагинации
 		limitStr := r.URL.Query().Get("limit")
 		pageStr := r.URL.Query().Get("page")
@@ -78,23 +82,23 @@ func GetSongsHandler(db *gorm.DB) http.HandlerFunc {
 
 		offset := (page - 1) * limit
 
-		logger.DebugKV(ctx, "Filter parameters", "field", field, "value", value)
+		logger.DebugKV(ctx, "Filter parameters", "field", normalizedField, "value", normalizedValue)
 		logger.DebugKV(ctx, "Pagination", "limit", limit, "page", page, "offset", offset)
 
 		// Подготавливаем запрос с фильтрацией и пагинацией
 		var songs []models.SongDetail
 		query := db.Model(&models.SongDetail{})
 
-		if field != "" && value != "" {
-			switch field {
+		if normalizedField != "" && normalizedValue != "" {
+			switch normalizedField {
 			case "song_name":
 				// Используем ILIKE для точного соответствия, игнорируя регистр
-				query = query.Where("song_name ILIKE ?", value)
+				query = query.Where("song_name ILIKE ?", normalizedValue)
 			case "artist_name":
 				query = query.Joins("JOIN artists ON artists.id = song_details.artist_id").
-					Where("artists.name ILIKE ?", "%"+value+"%")
+					Where("artists.name ILIKE ?", "%"+normalizedValue+"%")
 			case "release_date":
-				releaseDate, err := time.Parse("2006-01-02", value)
+				releaseDate, err := time.Parse("2006-01-02", normalizedValue)
 				if err == nil {
 					query = query.Where("release_date = ?", releaseDate)
 				}
