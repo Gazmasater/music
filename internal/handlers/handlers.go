@@ -348,7 +348,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		}
 		if updatedData.GroupLink != "" {
 			normalizedGroupLink := utils.NormalizeSongName(updatedData.GroupLink)
-			song.GroupName = normalizedGroupLink
+			song.SongURL = normalizedGroupLink
 			logger.Debug(ctx, "Group link updated", "newGroupLink", normalizedGroupLink)
 		}
 		if len(updatedData.Text.Verses) > 0 {
@@ -362,6 +362,9 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			logger.Debug(ctx, "Song text updated", "newText", updatedData.Text)
 		}
 
+		// Логируем текущее состояние песни перед сохранением
+		logger.Debug(ctx, "Saving song", "song", song)
+
 		// Сохранение обновленной песни в базу данных
 		if err := db.Save(&song).Error; err != nil {
 			logger.Error(ctx, "Failed to update song in database", "error", err)
@@ -374,7 +377,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			ArtistName:  updatedData.ArtistName,
 			SongName:    song.SongName,
 			ReleaseDate: song.ReleaseDate,
-			GroupLink:   song.GroupName,
+			GroupLink:   song.SongURL,
 			Text:        updatedData.Text,
 		}
 

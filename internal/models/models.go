@@ -17,13 +17,14 @@ type SongText struct {
 }
 
 type SongDetail struct {
-	ID          int       `json:"id"`
-	ArtistID    uint      `json:"artist_id"`
-	GroupName   string    `json:"group_name"`
-	SongName    string    `json:"song_name"`
-	ReleaseDate time.Time `json:"release_date"`
-	Text        string    `json:"text"` // Заменяем json.RawMessage на string
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uint `gorm:"primaryKey"`
+	ArtistID    uint
+	GroupName   string
+	SongName    string
+	ReleaseDate time.Time
+	Text        string
+	SongURL     string    `gorm:"column:song_url"` // Убедитесь, что это поле присутствует
+	CreatedAt   time.Time `gorm:"autoCreateTime"`
 }
 
 // Song представляет минимальную информацию о песне для создания
