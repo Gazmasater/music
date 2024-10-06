@@ -11,7 +11,7 @@
    
    git clone https://github.com/Gazmasater/music
 
-   В .env  DB_HOST=db
+   В .env  DB_HOST=db (Если запуск в контейнере)
    
 2. Запустите контейнер: Используйте Docker Compose для сборки и запуска контейнеров:
 

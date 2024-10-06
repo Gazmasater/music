@@ -160,14 +160,11 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 		// Структура для получения базовой информации о песне
 		var songInput models.SongInput
 
-		// Декодируем запрос
-		if err := json.NewDecoder(r.Body).Decode(&songInput); err != nil {
-			logger.Error(ctx, "Failed to decode new song", err)
+		// Декодируем запрос с использованием отдельной функции
+		if err := utils.DecodeInput(w, r, r.Context(), &songInput, "Decoded song input"); err != nil {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
-
-		logger.DebugKV(ctx, "Decoded song input", "song_input", songInput)
 
 		// Нормализация названия песни
 		songInput.Song = utils.NormalizeSongName(songInput.Song)
@@ -313,9 +310,8 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Получаем данные для обновления
 		var updatedData models.SongUpdateResponse
-		if err := json.NewDecoder(r.Body).Decode(&updatedData); err != nil {
-			logger.Error(ctx, "Failed to decode updated song data", "error", err)
-			http.Error(w, "Bad Request: Invalid data format", http.StatusBadRequest)
+
+		if err := utils.DecodeInput(w, r, ctx, &updatedData, "Decoded updated data"); err != nil {
 			return
 		}
 
