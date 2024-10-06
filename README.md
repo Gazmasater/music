@@ -8,9 +8,11 @@
 
 1. Клонируйте репозиторий:
 
-   ```bash
+   
    git clone https://github.com/Gazmasater/music
 
+   В .env  DB_HOST=db
+   
 2. Запустите контейнер: Используйте Docker Compose для сборки и запуска контейнеров:
 
 docker-compose up --build
@@ -21,9 +23,21 @@ docker-compose up --build
 
 http://localhost:8081/swagger/index.html
 
-5. Остановка контейнера: Чтобы остановить запущенные контейнеры, выполните:
+5. Изменение уровня логирования
+
+В .env  
+
+LOG_LEVEL=debug  
+LOG_LEVEL=info
+
+6. Остановка контейнера: Чтобы остановить запущенные контейнеры, выполните:
 
 docker-compose down
+
+## Запуск API на локальной машине
+
+В .env  DB_HOST=localhost
+
 
 ## Как форматировать песню для использования в данном api
 
