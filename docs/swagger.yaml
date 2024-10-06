@@ -21,29 +21,29 @@ definitions:
     type: object
   models.SongDetail:
     properties:
-      artist_id:
+      artistID:
         type: integer
-      created_at:
+      createdAt:
         type: string
-      group_name:
+      groupName:
         type: string
       id:
         type: integer
-      release_date:
+      releaseDate:
         type: string
-      song_name:
+      songName:
+        type: string
+      songURL:
+        description: Убедитесь, что это поле присутствует
         type: string
       text:
-        description: Заменяем json.RawMessage на string
         type: string
     type: object
   models.SongInput:
     properties:
       group:
-        description: Имя исполнителя
         type: string
       song:
-        description: Название песни
         type: string
     required:
     - group
@@ -58,19 +58,29 @@ definitions:
         type: array
     type: object
   models.SongUpdateResponse:
+    description: Структура ответа после обновления песни
     properties:
       artist_name:
+        description: Имя исполнителя
+        example: Исполнитель
         type: string
       group_link:
+        description: Ссылка на группу
+        example: http://example.com
         type: string
       release_date:
+        description: Укажите формат даты в Swagger
+        example: 1985.02.05
+        format: date
         type: string
       song_name:
+        description: Название песни
+        example: Название песни
         type: string
       text:
         allOf:
         - $ref: '#/definitions/models.SongText'
-        description: Измените на SongText
+        description: Текст песни
     type: object
   models.SongsResponse:
     properties:

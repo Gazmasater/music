@@ -280,26 +280,29 @@ const docTemplate = `{
         "models.SongDetail": {
             "type": "object",
             "properties": {
-                "artist_id": {
+                "artistID": {
                     "type": "integer"
                 },
-                "created_at": {
+                "createdAt": {
                     "type": "string"
                 },
-                "group_name": {
+                "groupName": {
                     "type": "string"
                 },
                 "id": {
                     "type": "integer"
                 },
-                "release_date": {
+                "releaseDate": {
                     "type": "string"
                 },
-                "song_name": {
+                "songName": {
+                    "type": "string"
+                },
+                "songURL": {
+                    "description": "Убедитесь, что это поле присутствует",
                     "type": "string"
                 },
                 "text": {
-                    "description": "Заменяем json.RawMessage на string",
                     "type": "string"
                 }
             }
@@ -312,11 +315,9 @@ const docTemplate = `{
             ],
             "properties": {
                 "group": {
-                    "description": "Имя исполнителя",
                     "type": "string"
                 },
                 "song": {
-                    "description": "Название песни",
                     "type": "string"
                 }
             }
@@ -334,22 +335,32 @@ const docTemplate = `{
             }
         },
         "models.SongUpdateResponse": {
+            "description": "Структура ответа после обновления песни",
             "type": "object",
             "properties": {
                 "artist_name": {
-                    "type": "string"
+                    "description": "Имя исполнителя",
+                    "type": "string",
+                    "example": "Исполнитель"
                 },
                 "group_link": {
-                    "type": "string"
+                    "description": "Ссылка на группу",
+                    "type": "string",
+                    "example": "http://example.com"
                 },
                 "release_date": {
-                    "type": "string"
+                    "description": "Укажите формат даты в Swagger",
+                    "type": "string",
+                    "format": "date",
+                    "example": "1985.02.05"
                 },
                 "song_name": {
-                    "type": "string"
+                    "description": "Название песни",
+                    "type": "string",
+                    "example": "Название песни"
                 },
                 "text": {
-                    "description": "Измените на SongText",
+                    "description": "Текст песни",
                     "allOf": [
                         {
                             "$ref": "#/definitions/models.SongText"

@@ -220,8 +220,8 @@ func AddSongHandler(db *gorm.DB) http.HandlerFunc {
 			return
 		}
 
-		// Возвращаем статус 201 Created
-		w.WriteHeader(http.StatusCreated)
+		// Возвращаем статус 200 Created
+		w.WriteHeader(http.StatusOK) // Измените статус на 200 OK
 		if err := json.NewEncoder(w).Encode(newSong); err != nil {
 			logger.Error(ctx, "Failed to encode new song response", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -320,10 +320,22 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		}
 
 		// Проверка на наличие полей для обновления
-		if updatedData.SongName == "" && updatedData.ArtistName == "" && updatedData.GroupLink == "" && len(updatedData.Text.Verses) == 0 {
+		if updatedData.SongName == "" && updatedData.ArtistName == "" && updatedData.GroupLink == "" && len(updatedData.Text.Verses) == 0 && updatedData.ReleaseDate == "" {
 			logger.Warn(ctx, "No fields to update")
 			http.Error(w, "Bad Request: No fields to update", http.StatusBadRequest)
 			return
+		}
+
+		// Парсим строку даты в time.Time
+		if updatedData.ReleaseDate != "" {
+			parsedDate, err := time.Parse("2006.01.02", updatedData.ReleaseDate)
+			if err != nil {
+				logger.Error(ctx, "Failed to parse release date", "error", err)
+				http.Error(w, "Bad Request: Invalid release date format", http.StatusBadRequest)
+				return
+			}
+			song.ReleaseDate = parsedDate
+			logger.Debug(ctx, "Release date updated", "newReleaseDate", song.ReleaseDate)
 		}
 
 		// Обновление информации о исполнителе
@@ -346,15 +358,13 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 			song.SongName = normalizedNewSongName
 			logger.Debug(ctx, "Song name updated", "newSongName", normalizedNewSongName)
 		}
-		if !updatedData.ReleaseDate.IsZero() {
-			song.ReleaseDate = updatedData.ReleaseDate
-			logger.Debug(ctx, "Release date updated", "newReleaseDate", updatedData.ReleaseDate)
-		}
+
 		if updatedData.GroupLink != "" {
 			normalizedGroupLink := utils.NormalizeSongName(updatedData.GroupLink)
 			song.SongURL = normalizedGroupLink
 			logger.Debug(ctx, "Group link updated", "newGroupLink", normalizedGroupLink)
 		}
+
 		if len(updatedData.Text.Verses) > 0 {
 			textJSON, err := json.Marshal(updatedData.Text)
 			if err != nil {
@@ -380,7 +390,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		response := models.SongUpdateResponse{
 			ArtistName:  updatedData.ArtistName,
 			SongName:    song.SongName,
-			ReleaseDate: song.ReleaseDate,
+			ReleaseDate: song.ReleaseDate.Format("2006.01.02"), // Форматируем обратно в строку
 			GroupLink:   song.SongURL,
 			Text:        updatedData.Text,
 		}

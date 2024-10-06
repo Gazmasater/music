@@ -11,12 +11,13 @@ CREATE TABLE song_details (
     artist_id INTEGER REFERENCES artists(id) ON DELETE CASCADE,
     group_name VARCHAR(255) NOT NULL,
     song_name VARCHAR(255) NOT NULL,
-    release_date TIMESTAMP,
+    release_date DATE,  -- Изменено на DATE
     text JSONB,
     song_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (song_name, artist_id)
 );
+
 
 -- Индекс на поле artist_id для оптимизации запросов по исполнителям
 CREATE INDEX idx_song_details_artist_id ON song_details (artist_id);

@@ -21,7 +21,7 @@ type SongDetail struct {
 	ArtistID    uint
 	GroupName   string
 	SongName    string
-	ReleaseDate time.Time
+	ReleaseDate time.Time `gorm:"type:date"` // Указываем тип поля в базе данных
 	Text        string
 	SongURL     string    `gorm:"column:song_url"` // Убедитесь, что это поле присутствует
 	CreatedAt   time.Time `gorm:"autoCreateTime"`
@@ -40,13 +40,12 @@ type SongInput struct {
 	Song  string `json:"song" validate:"required"`
 }
 
-// SongUpdateResponse представляет структуру ответа на обновление песни
 type SongUpdateResponse struct {
-	ArtistName  string    `json:"artist_name,omitempty"`
-	SongName    string    `json:"song_name,omitempty"`
-	ReleaseDate time.Time `json:"release_date,omitempty"`
-	GroupLink   string    `json:"group_link,omitempty"`
-	Text        SongText  `json:"text,omitempty"` // Измените на SongText
+	ArtistName  string   `json:"artist_name" example:"Исполнитель"`
+	SongName    string   `json:"song_name" example:"Название песни"`
+	ReleaseDate string   `json:"release_date" swaggertype:"string" format:"date" example:"1985-02-05"` // Изменено на time.Time
+	GroupLink   string   `json:"group_link" example:"http://example.com"`
+	Text        SongText `json:"text"`
 }
 
 type PaginatedLyricsRespons struct {
