@@ -18,33 +18,59 @@ func TestDecodeURLParameter(t *testing.T) {
 		expectedOk    bool
 	}{
 		{
-			name:          "Valid parameter",
+			name:          "Valid parameter with space",
 			param:         "hello%20world",
 			expectedValue: "hello world",
 			expectedOk:    true,
 		},
 		{
-			name:          "Invalid parameter",
-			param:         "%ZZ", // некорректный URL
+			name:          "Valid parameter with plus",
+			param:         "hello+world",
+			expectedValue: "hello world",
+			expectedOk:    true,
+		},
+		{
+			name:          "Valid parameter with special characters",
+			param:         "test%40example.com",
+			expectedValue: "test@example.com",
+			expectedOk:    true,
+		},
+		{
+			name:          "Invalid parameter with incorrect encoding",
+			param:         "%ZZ",
 			expectedValue: "",
 			expectedOk:    false,
+		},
+		{
+			name:          "Invalid parameter with single %",
+			param:         "%",
+			expectedValue: "",
+			expectedOk:    false,
+		},
+		{
+			name:          "Invalid parameter with incomplete escape",
+			param:         "hello%",
+			expectedValue: "",
+			expectedOk:    false,
+		},
+		{
+			name:          "Valid parameter with Cyrillic",
+			param:         "параметр%20с%20кириллицей",
+			expectedValue: "параметр с кириллицей",
+			expectedOk:    true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Создаем новый контекст и записываю в него результат работы http.ResponseWriter
 			w := httptest.NewRecorder()
 			ctx := context.Background()
 
-			// Вызываем функцию DecodeURLParameter
 			value, ok := utils.DecodeURLParameter(ctx, tt.param, w, "Decode failed")
 
-			// Проверяем ожидаемые результаты
 			assert.Equal(t, tt.expectedValue, value)
 			assert.Equal(t, tt.expectedOk, ok)
 
-			// Если параметр некорректный, проверяем, что ответ содержит ошибку
 			if !tt.expectedOk {
 				assert.Equal(t, http.StatusBadRequest, w.Code)
 			}

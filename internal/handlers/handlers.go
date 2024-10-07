@@ -243,7 +243,7 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 		// Используем функцию DecodeURLParameter для декодирования
 		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
 		if !ok {
-			return // Ошибка уже обработана в DecodeURLParameter
+			return
 		}
 		logger.Debug(ctx, "Decoded song name", "decodedSongName", decodedSongName)
 
@@ -288,7 +288,7 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		songName := chi.URLParam(r, "songName")
 		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
 		if !ok {
-			return // Ошибка уже обработана в DecodeURLParameter
+			return
 		}
 
 		// Нормализуем название песни через utils
@@ -415,7 +415,7 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 		songName := chi.URLParam(r, "songName")
 		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
 		if !ok {
-			return // Ошибка уже обработана в DecodeURLParameter
+			return
 		}
 
 		// Нормализуем название песни
