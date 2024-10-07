@@ -36,8 +36,9 @@ type Song struct {
 }
 
 type SongInput struct {
-	Group string `json:"group" validate:"required"`
-	Song  string `json:"song" validate:"required"`
+	Group       string `json:"group"`
+	Song        string `json:"song"`
+	ReleaseDate string `json:"release_date"` // Дата релиза в формате строки
 }
 
 type SongUpdateResponse struct {
