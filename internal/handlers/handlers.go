@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -241,12 +240,10 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 		ctx := r.Context()
 		songName := chi.URLParam(r, "songName")
 
-		// Декодируем имя песни для обработки специальных символов
-		decodedSongName, err := url.QueryUnescape(songName)
-		if err != nil {
-			logger.Error(ctx, "Failed to decode song name", "error", err)
-			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
-			return
+		// Используем функцию DecodeURLParameter для декодирования
+		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
+		if !ok {
+			return // Ошибка уже обработана в DecodeURLParameter
 		}
 		logger.Debug(ctx, "Decoded song name", "decodedSongName", decodedSongName)
 
@@ -287,13 +284,11 @@ func UpdateSongHandler(db *gorm.DB) http.HandlerFunc {
 		ctx := r.Context()
 		logger.Debug(ctx, "Entering UpdateSongHandler")
 
-		// Получаем название песни из URL и декодируем его
+		// Получаем название песни из URL и декодируем его с помощью DecodeURLParameter
 		songName := chi.URLParam(r, "songName")
-		decodedSongName, err := url.QueryUnescape(songName)
-		if err != nil {
-			logger.Error(ctx, "Failed to decode song name", "error", err)
-			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
-			return
+		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
+		if !ok {
+			return // Ошибка уже обработана в DecodeURLParameter
 		}
 
 		// Нормализуем название песни через utils
@@ -418,11 +413,9 @@ func GetSongLyricsHandler(db *gorm.DB) http.HandlerFunc {
 
 		// Извлекаем и декодируем название песни из параметров маршрута
 		songName := chi.URLParam(r, "songName")
-		decodedSongName, err := url.QueryUnescape(songName)
-		if err != nil {
-			logger.Error(ctx, "Failed to decode song name", "error", err)
-			http.Error(w, "Bad Request: Invalid song name", http.StatusBadRequest)
-			return
+		decodedSongName, ok := utils.DecodeURLParameter(ctx, songName, w, "Invalid song name")
+		if !ok {
+			return // Ошибка уже обработана в DecodeURLParameter
 		}
 
 		// Нормализуем название песни
