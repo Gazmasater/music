@@ -245,7 +245,6 @@ func DeleteSongHandler(db *gorm.DB) http.HandlerFunc {
 		if !ok {
 			return
 		}
-		logger.Debug(ctx, "Decoded song name", "decodedSongName", decodedSongName)
 
 		// Нормализуем имя песни с помощью utils
 		normalizedSongName := utils.NormalizeSongName(decodedSongName)
